@@ -3,406 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manga Livre Explorer</title>
-    <!-- Tailwind CSS -->
+    <title>MangaLibre - Mangás, Manhwas & Webtoons</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script>
-        // Configuração do Tailwind e desativação do aviso de console
-        window.tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: '#e11d48',
-                        dark: '#0f172a',
-                        card: '#1e293b'
-                    }
-                }
-            }
-        };
-        // Silencia o aviso específico do Tailwind no console
-        const originalWarn = console.warn;
-        console.warn = (...args) => {
-            if (args[0] && args[0].includes('cdn.tailwindcss.com')) return;
-            originalWarn(...args);
-        };
-    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        .manga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.5rem; }
-        .reader-img { width: 100%; max-width: 800px; margin: 0 auto; display: block; }
-        .loading-shimmer { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        :root {
+            --bg-dark: #0f0f10;
+            --card-dark: #1a1a1c;
+            --accent: #e50914;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #efefef;
+            font-family: 'Inter', sans-serif;
+        }
+        .manga-card:hover .overlay {
+            opacity: 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1a1a1c;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .nav-link {
+            @apply hover:text-white transition cursor-pointer text-gray-400 text-sm font-medium border-b-2 border-transparent pb-1;
+        }
+        .nav-link.active {
+            @apply text-red-600 border-red-600;
+        }
+        .filter-chip {
+            @apply px-3 py-1.5 rounded-full text-xs font-medium bg-[#1a1a1c] border border-gray-800 hover:border-red-600 hover:text-white transition cursor-pointer whitespace-nowrap;
+        }
+        .filter-chip.active {
+            @apply bg-red-600 border-red-600 text-white;
+        }
+        .pagination-btn {
+            @apply bg-[#1a1a1c] border border-gray-800 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-600 hover:border-red-600 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2;
+        }
+        .chapter-list-item {
+            @apply flex justify-between items-center p-3 border-b border-white/5 hover:bg-white/5 transition cursor-pointer rounded-lg;
+        }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="custom-scrollbar">
 
-    <!-- Header -->
-    <header class="sticky top-0 z-50 bg-dark/90 backdrop-blur-md border-b border-slate-800 p-4">
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-[#121214] border-b border-gray-800 px-4 py-3">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="showHome()">
-                <div class="bg-brand p-1.5 rounded-lg">
-                    <i data-lucide="book-open" class="text-white w-6 h-6"></i>
-                </div>
-                <h1 class="text-xl font-bold tracking-tight text-white hidden sm:block">MANGA<span class="text-brand">LIVRE</span></h1>
-            </div>
-            
-            <div class="flex-1 max-w-md mx-4">
-                <div class="relative">
-                    <input type="text" id="searchInput" placeholder="Buscar mangás..." 
-                        class="w-full bg-slate-800 border-none rounded-full py-2 px-10 focus:ring-2 focus:ring-brand text-sm outline-none text-white">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+            <div class="flex items-center gap-8">
+                <h1 class="text-2xl font-bold text-red-600 tracking-tighter cursor-pointer" onclick="resetAndLoad()">
+                    MANGA<span class="text-white">LIBRE</span>
+                </h1>
+                <div class="hidden lg:flex gap-6">
+                    <span onclick="setFilter('trending')" class="nav-link active" id="nav-trending">Início</span>
+                    <span onclick="setFilter('popular')" class="nav-link" id="nav-popular">Populares</span>
                 </div>
             </div>
-
             <div class="flex items-center gap-4">
-                <button class="text-slate-400 hover:text-white transition"><i data-lucide="user" class="w-6 h-6"></i></button>
+                <div class="relative hidden sm:block">
+                    <form id="search-form" onsubmit="handleSearch(event)">
+                        <input type="text" id="search-input" placeholder="Buscar título no MangaDex..." class="bg-[#1a1a1c] border border-gray-700 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:border-red-600 w-48 md:w-64 transition-all text-white">
+                        <button type="submit" class="absolute right-3 top-2.5 text-gray-500 hover:text-red-600">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+                <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded text-sm font-bold transition">Login</button>
             </div>
         </div>
-    </header>
+    </nav>
 
-    <main class="max-w-7xl mx-auto p-4 sm:p-6">
-        <!-- Listagem Principal -->
-        <div id="homeSection">
-            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
-                <i data-lucide="trending-up" class="text-brand"></i> Populares agora
-            </h2>
-            <div id="mangaList" class="manga-grid">
-                <!-- Skeletons inseridos via JS -->
-            </div>
+    <!-- Conteúdo Principal -->
+    <main id="home-page" class="max-w-7xl mx-auto p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 id="section-title" class="text-xl font-bold flex items-center gap-2 text-white">
+                <span class="w-1 h-6 bg-red-600 rounded-full"></span>
+                Explorar Mangás
+            </h3>
         </div>
+        <div id="error-message" class="hidden bg-red-900/20 border border-red-900/50 text-red-500 p-4 rounded-lg mb-6 text-center">
+            Ocorreu um erro ao carregar os dados da API. Tentando novamente em instantes...
+        </div>
+        <div id="loader" class="hidden flex justify-center py-20">
+            <div class="loading-spinner"></div>
+        </div>
+        <div id="manga-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+        
+        <!-- Paginação -->
+        <div id="pagination-controls" class="flex items-center justify-center gap-4 mt-12 py-6 border-t border-white/5">
+            <button id="prev-btn" onclick="changePage(-1)" class="pagination-btn"><i class="fas fa-chevron-left"></i> Anterior</button>
+            <span id="page-indicator" class="text-sm font-bold text-gray-400 bg-white/5 px-4 py-2 rounded-lg">Página 1</span>
+            <button id="next-btn" onclick="changePage(1)" class="pagination-btn">Próximo <i class="fas fa-chevron-right"></i></button>
+        </div>
+    </main>
 
-        <!-- Detalhes do Mangá -->
-        <div id="detailsSection" class="hidden">
-            <button onclick="showHome()" class="mb-6 flex items-center gap-2 text-slate-400 hover:text-brand transition">
-                <i data-lucide="arrow-left" class="w-5 h-5"></i> Voltar
+    <!-- Detalhes do Mangá -->
+    <main id="details-page" class="hidden max-w-7xl mx-auto p-4 sm:p-6">
+        <button onclick="showPage('home')" class="mb-6 text-gray-400 hover:text-white transition flex items-center gap-2">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </button>
+        <div id="manga-detail-content"></div>
+    </main>
+
+    <!-- Visualizador de Leitura -->
+    <main id="reader-page" class="hidden bg-black min-h-screen">
+        <div class="sticky top-0 z-50 bg-[#121214] p-4 flex justify-between items-center border-b border-white/10">
+            <button onclick="showPage('details')" class="text-white bg-white/10 px-4 py-2 rounded-lg text-sm hover:bg-white/20 transition">
+                <i class="fas fa-times"></i> Fechar Leitor
             </button>
-            <div id="mangaDetailsContent"></div>
+            <h4 id="reader-title" class="text-sm font-bold truncate max-w-xs md:max-w-lg">Lendo Capítulo</h4>
+            <div class="w-10"></div>
         </div>
-
-        <!-- Leitor -->
-        <div id="readerSection" class="hidden fixed inset-0 z-[60] bg-black overflow-y-auto no-scrollbar">
-            <div class="sticky top-0 bg-black/90 backdrop-blur-md p-4 flex items-center justify-between border-b border-white/10">
-                <div class="flex items-center gap-4">
-                    <button onclick="closeReader()" class="p-2 hover:bg-white/10 rounded-full text-white">
-                        <i data-lucide="x" class="w-6 h-6"></i>
-                    </button>
-                    <h3 id="readerTitle" class="text-sm font-medium text-slate-300 truncate max-w-[150px] sm:max-w-md">Capítulo</h3>
-                </div>
-                <div class="flex gap-2">
-                    <button id="prevCap" class="px-3 py-1.5 bg-white/10 rounded text-sm disabled:opacity-30">Anterior</button>
-                    <button id="nextCap" class="px-3 py-1.5 bg-brand rounded text-sm disabled:opacity-30">Próximo</button>
-                </div>
-            </div>
-            <div id="pagesContainer" class="flex flex-col items-center py-4 space-y-2">
-                <!-- Imagens aqui -->
-            </div>
+        <div id="reader-images" class="flex flex-col items-center gap-4 py-6 max-w-4xl mx-auto"></div>
+        <div class="p-10 text-center">
+            <p class="text-gray-500 text-sm">Fim do Capítulo</p>
         </div>
     </main>
 
     <script>
+        // Configurações de API - Utilizando uma instância Vercel ou Fallback se api.consumet.org falhar
         const JIKAN_API = 'https://api.jikan.moe/v4';
-        const MANGADEX_API = 'https://api.mangadex.org';
-        // Proxy para contornar o bloqueio de CORS
-        const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
         
-        let currentChapters = [];
-        let currentChapterIndex = -1;
+        // Tentamos usar instâncias alternativas caso a principal falhe
+        const CONSUMET_INSTANCES = [
+            'https://consumet-api-production-e652.up.railway.app/manga/mangadex',
+            'https://api-consumet-org-instance.vercel.app/manga/mangadex',
+            'https://api.consumet.org/manga/mangadex'
+        ];
+        
+        let currentInstanceIndex = 0;
+        let currentFilter = 'trending';
+        let currentPage = 1;
+        let isFetching = false;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            fetchTrending();
-            
-            const searchInput = document.getElementById('searchInput');
-            searchInput.onkeypress = (e) => {
-                if (e.key === 'Enter') searchManga(e.target.value);
-            };
-        });
-
-        function showHome() {
-            document.getElementById('homeSection').classList.remove('hidden');
-            document.getElementById('detailsSection').classList.add('hidden');
-            window.scrollTo(0, 0);
+        async function handleSearch(event) {
+            event.preventDefault();
+            const query = document.getElementById('search-input').value;
+            if (query.length < 3) return;
+            showPage('home');
+            currentPage = 1;
+            document.getElementById('section-title').innerText = `Resultados para: ${query}`;
+            const data = await fetchFromConsumet(`/${encodeURIComponent(query)}?page=${currentPage}`);
+            if (data && data.results) renderGrid(data.results);
         }
 
-        function showDetails() {
-            document.getElementById('homeSection').classList.add('hidden');
-            document.getElementById('detailsSection').classList.remove('hidden');
-            window.scrollTo(0, 0);
-        }
+        async function fetchFromConsumet(endpoint) {
+            if (isFetching) return null;
+            isFetching = true;
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('error-message').classList.add('hidden');
 
-        function closeReader() {
-            document.getElementById('readerSection').classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-            document.getElementById('pagesContainer').innerHTML = '';
-        }
-
-        function createSkeletons() {
-            const container = document.getElementById('mangaList');
-            container.innerHTML = '';
-            for(let i=0; i<12; i++) {
-                const skel = document.createElement('div');
-                skel.className = 'space-y-3';
-                skel.innerHTML = `
-                    <div class="aspect-[3/4] rounded-xl loading-shimmer"></div>
-                    <div class="h-4 w-3/4 rounded loading-shimmer"></div>
-                `;
-                container.appendChild(skel);
+            // Tentativa com Retry e troca de instância
+            for (let i = 0; i < CONSUMET_INSTANCES.length; i++) {
+                try {
+                    const baseUrl = CONSUMET_INSTANCES[currentInstanceIndex];
+                    const response = await fetch(`${baseUrl}${endpoint}`, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    
+                    if (!response.ok) throw new Error('Falha na resposta da rede');
+                    
+                    const result = await response.json();
+                    isFetching = false;
+                    document.getElementById('loader').classList.add('hidden');
+                    return result;
+                } catch (e) {
+                    console.warn(`Instância ${currentInstanceIndex} falhou. Tentando próxima...`);
+                    currentInstanceIndex = (currentInstanceIndex + 1) % CONSUMET_INSTANCES.length;
+                }
             }
+
+            // Se todas falharem
+            isFetching = false;
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('error-message').classList.remove('hidden');
+            return null;
         }
 
-        async function fetchTrending() {
-            createSkeletons();
+        async function fetchFromJikan(endpoint) {
             try {
-                const response = await fetch(`${JIKAN_API}/top/manga?filter=bypopularity&limit=20`);
-                const data = await response.json();
-                renderMangaList(data.data);
-            } catch (err) {
-                console.error(err);
-                document.getElementById('mangaList').innerHTML = `<p class="text-red-500 text-center col-span-full py-10">Erro ao carregar mangás.</p>`;
+                const response = await fetch(`${JIKAN_API}${endpoint}`);
+                const result = await response.json();
+                return result.data;
+            } catch (e) {
+                console.error("Erro Jikan:", e);
+                return null;
             }
         }
 
-        async function searchManga(query) {
-            if (!query) return fetchTrending();
-            const container = document.getElementById('mangaList');
-            container.innerHTML = '<p class="col-span-full text-center py-10 text-slate-400">Buscando...</p>';
+        async function loadContent() {
+            showPage('home');
+            let endpoint = `/${currentFilter}?page=${currentPage}`;
+            const data = await fetchFromConsumet(endpoint);
             
-            try {
-                const response = await fetch(`${JIKAN_API}/manga?q=${encodeURIComponent(query)}&order_by=popularity&sort=asc`);
-                const data = await response.json();
-                renderMangaList(data.data);
-            } catch (err) {
-                console.error(err);
+            if (data && data.results) {
+                renderGrid(data.results);
+                updatePaginationUI(data.hasNextPage || false);
             }
         }
 
-        function renderMangaList(mangas) {
-            const container = document.getElementById('mangaList');
-            container.innerHTML = '';
+        function renderGrid(list) {
+            const grid = document.getElementById('manga-grid');
+            if (list.length === 0) {
+                grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-10">Nenhum resultado encontrado.</p>';
+                return;
+            }
+            grid.innerHTML = list.map(item => `
+                <div class="manga-card relative group cursor-pointer" onclick="openDetails('${item.id}')">
+                    <div class="relative overflow-hidden rounded-xl aspect-[3/4] bg-[#1a1a1c] shadow-lg">
+                        <img src="${item.image}" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" alt="${item.title}" onerror="this.src='https://via.placeholder.com/300x450?text=Sem+Imagem'">
+                        <div class="overlay absolute inset-0 bg-black/60 opacity-0 transition-opacity flex flex-col justify-end p-4">
+                             <button class="bg-red-600 text-[10px] py-2 rounded font-bold uppercase">Ler Agora</button>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-sm font-bold truncate">${typeof item.title === 'object' ? item.title.en || item.title.ja || item.title.it : item.title}</p>
+                </div>
+            `).join('');
+        }
 
-            if (!mangas || mangas.length === 0) {
-                container.innerHTML = '<p class="col-span-full text-center py-10 text-slate-500">Nenhum resultado encontrado.</p>';
+        async function openDetails(mangaId) {
+            showPage('details');
+            const container = document.getElementById('manga-detail-content');
+            container.innerHTML = '<div class="flex justify-center p-20"><div class="loading-spinner"></div></div>';
+            
+            const mangaData = await fetchFromConsumet(`/info/${mangaId}`);
+            if (!mangaData) {
+                container.innerHTML = '<p class="text-center py-20 text-red-500">Erro ao carregar detalhes. Tente outra vez.</p>';
                 return;
             }
 
-            mangas.forEach(manga => {
-                const card = document.createElement('div');
-                card.className = 'group cursor-pointer transition-all hover:-translate-y-1';
-                card.onclick = () => loadMangaDetails(manga.mal_id);
-                
-                card.innerHTML = `
-                    <div class="relative aspect-[3/4] rounded-xl overflow-hidden shadow-lg border border-slate-800">
-                        <img src="${manga.images.webp.large_image_url}" alt="${manga.title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
-                        <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
-                            <span class="text-[10px] uppercase font-bold text-brand bg-brand/10 px-2 py-0.5 rounded">${manga.type || 'Manga'}</span>
-                        </div>
+            const titleText = typeof mangaData.title === 'object' ? mangaData.title.en || mangaData.title.ja || mangaData.title.it : mangaData.title;
+            
+            // Jikan para sinopse
+            const jikanData = await fetchFromJikan(`/manga?q=${encodeURIComponent(titleText)}&limit=1`);
+            const extraInfo = jikanData && jikanData.length > 0 ? jikanData[0] : null;
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row gap-8 text-left">
+                    <div class="w-full md:w-1/3 max-w-[300px] mx-auto">
+                        <img src="${mangaData.image}" class="rounded-xl shadow-xl w-full" alt="${titleText}">
                     </div>
-                    <h3 class="mt-3 text-sm font-semibold line-clamp-2 group-hover:text-brand transition">${manga.title}</h3>
-                    <p class="text-xs text-slate-500 mt-1">${manga.score ? '⭐ ' + manga.score : 'N/A'}</p>
-                `;
-                container.appendChild(card);
-            });
-            lucide.createIcons();
-        }
-
-        async function loadMangaDetails(malId) {
-            showDetails();
-            const content = document.getElementById('mangaDetailsContent');
-            content.innerHTML = '<div class="h-96 loading-shimmer rounded-2xl w-full"></div>';
-
-            try {
-                const response = await fetch(`${JIKAN_API}/manga/${malId}/full`);
-                const { data } = await response.json();
-                
-                content.innerHTML = `
-                    <div class="flex flex-col md:flex-row gap-8">
-                        <div class="w-full md:w-72 shrink-0">
-                            <img src="${data.images.webp.large_image_url}" class="w-full rounded-2xl shadow-2xl border border-slate-800">
-                            <div class="mt-6 space-y-2 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
-                                <div class="flex justify-between text-sm"><span class="text-slate-500">Status</span> <span class="text-white">${data.status}</span></div>
-                                <div class="flex justify-between text-sm"><span class="text-slate-500">Capítulos</span> <span class="text-white">${data.chapters || '??'}</span></div>
-                                <div class="flex justify-between text-sm"><span class="text-slate-500">Nota</span> <span class="text-brand font-bold">${data.score || 'N/A'}</span></div>
-                            </div>
+                    <div class="flex-1">
+                        <h2 class="text-3xl font-black mb-2">${titleText}</h2>
+                        <p class="text-gray-400 mb-4 italic">${mangaData.altTitles?.length > 0 ? mangaData.altTitles[0] : ''}</p>
+                        
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            ${(extraInfo?.genres || mangaData.genres || []).map(g => `<span class="bg-white/5 px-3 py-1 rounded-full text-xs">${g.name || g}</span>`).join('')}
                         </div>
-                        <div class="flex-1">
-                            <h2 class="text-3xl font-bold mb-2">${data.title}</h2>
-                            <p class="text-slate-400 mb-6 italic">${data.title_english || ''}</p>
-                            
-                            <div class="flex flex-wrap gap-2 mb-8">
-                                ${data.genres.map(g => `<span class="bg-slate-800 text-xs px-3 py-1 rounded-full border border-slate-700">${g.name}</span>`).join('')}
-                            </div>
 
-                            <div class="mb-8">
-                                <h4 class="text-lg font-bold mb-2 border-b border-slate-800 pb-2">Sinopse</h4>
-                                <p class="text-slate-300 leading-relaxed text-sm">${data.synopsis || 'Sem descrição.'}</p>
-                            </div>
-
-                            <div>
-                                <h4 class="text-lg font-bold mb-4 border-b border-slate-800 pb-2 flex justify-between items-center">
-                                    Capítulos PT-BR
-                                    <span class="text-[10px] text-slate-500 uppercase tracking-widest">MangaDex</span>
-                                </h4>
-                                <div id="chapterList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                    <div class="col-span-full py-10 flex flex-col items-center">
-                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mb-2"></div>
-                                        <p class="text-slate-500 text-sm italic">Buscando capítulos em português...</p>
-                                    </div>
-                                </div>
+                        <h4 class="font-bold mb-2">Sinopse</h4>
+                        <div class="text-gray-400 text-sm mb-8 leading-relaxed max-h-48 overflow-y-auto custom-scrollbar">
+                            ${extraInfo?.synopsis || mangaData.description?.en || mangaData.description || 'Descrição não disponível.'}
+                        </div>
+                        
+                        <div class="bg-[#1a1a1c] p-6 rounded-xl">
+                            <h4 class="text-lg font-bold mb-4 flex items-center justify-between">
+                                Capítulos Disponíveis
+                                <span class="text-[10px] text-gray-500 font-normal">MangaDex</span>
+                            </h4>
+                            <div id="chapters-list" class="flex flex-col gap-1 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                                ${mangaData.chapters && mangaData.chapters.length > 0 ? 
+                                    mangaData.chapters.map(ch => `
+                                        <div class="chapter-list-item" onclick="openChapter('${ch.id}', 'Cap. ${ch.chapterNumber} - ${ch.title || ''}')">
+                                            <div>
+                                                <span class="font-bold text-white">Capítulo ${ch.chapterNumber}</span>
+                                                <span class="text-[10px] text-gray-500 ml-2 uppercase">${ch.title ? ch.title : ''}</span>
+                                            </div>
+                                            <i class="fas fa-book-open text-red-600 text-xs"></i>
+                                        </div>
+                                    `).reverse().join('') : 
+                                    '<p class="text-gray-500 italic">Nenhum capítulo encontrado nesta língua.</p>'
+                                }
                             </div>
                         </div>
                     </div>
-                `;
-                
-                fetchMangaDexChapters(data.title);
-            } catch (err) {
-                console.error(err);
-                content.innerHTML = `<p class="text-red-500">Erro ao carregar detalhes.</p>`;
-            }
-        }
-
-        async function fetchMangaDexChapters(title) {
-            const listContainer = document.getElementById('chapterList');
-            
-            try {
-                // Passo 1: Busca ID do Mangá (Usando Proxy apenas se o primeiro falhar, ou sempre para segurança no MangaDex)
-                const searchUrl = `${MANGADEX_API}/manga?title=${encodeURIComponent(title)}&limit=1&includes[]=cover_art`;
-                
-                // Tentativa direta com fallback de Proxy para evitar o erro de bloqueio relatado
-                let response;
-                try {
-                    response = await fetch(searchUrl);
-                    if (!response.ok) throw new Error();
-                } catch {
-                    // Fallback para Proxy se o GitHub Pages/Localhost estiver bloqueado
-                    response = await fetch(CORS_PROXY + searchUrl);
-                }
-                
-                const searchData = await response.json();
-                
-                if (!searchData.data || searchData.data.length === 0) {
-                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4">Nenhum capítulo encontrado nesta fonte.</p>';
-                    return;
-                }
-
-                const mdId = searchData.data[0].id;
-
-                // Passo 2: Busca capítulos PT-BR
-                const chapUrl = `${MANGADEX_API}/manga/${mdId}/feed?translatedLanguage[]=pt-br&limit=500&order[chapter]=desc`;
-                let chapResp;
-                try {
-                    chapResp = await fetch(chapUrl);
-                    if (!chapResp.ok) throw new Error();
-                } catch {
-                    chapResp = await fetch(CORS_PROXY + chapUrl);
-                }
-                
-                const chapData = await chapResp.json();
-
-                if (!chapData.data || chapData.data.length === 0) {
-                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4 italic">Conteúdo disponível em outros idiomas (PT-BR indisponível).</p>';
-                    return;
-                }
-
-                currentChapters = chapData.data;
-                listContainer.innerHTML = '';
-                
-                currentChapters.forEach((chap, index) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'flex items-center justify-between p-3 bg-slate-800/50 hover:bg-brand/20 border border-slate-700 rounded-lg text-left transition group';
-                    btn.onclick = () => openChapter(index);
-                    
-                    const num = chap.attributes.chapter || '?';
-                    const cTitle = chap.attributes.title || `Capítulo ${num}`;
-                    
-                    btn.innerHTML = `
-                        <div class="flex flex-col overflow-hidden">
-                            <span class="text-xs text-brand font-bold uppercase">Cap. ${num}</span>
-                            <span class="text-sm text-slate-200 truncate pr-4">${cTitle}</span>
-                        </div>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-brand shrink-0"></i>
-                    `;
-                    listContainer.appendChild(btn);
-                });
-                lucide.createIcons();
-
-            } catch (err) {
-                console.error('Erro na integração MangaDex:', err);
-                listContainer.innerHTML = `
-                    <div class="col-span-full py-4 text-center">
-                        <p class="text-red-500 text-sm mb-2">Erro de conexão com o servidor de capítulos.</p>
-                        <p class="text-xs text-slate-500 px-4">Nota: O MangaDex bloqueia requisições de domínios específicos. Tente recarregar ou use um navegador com CORS liberado.</p>
-                    </div>
-                `;
-            }
-        }
-
-        async function openChapter(index) {
-            currentChapterIndex = index;
-            const chapter = currentChapters[index];
-            
-            document.getElementById('readerSection').classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
-            document.getElementById('readerTitle').innerText = `Cap. ${chapter.attributes.chapter} - ${chapter.attributes.title || ''}`;
-            
-            const pagesContainer = document.getElementById('pagesContainer');
-            pagesContainer.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-screen text-slate-500">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mb-4"></div>
-                    <p>Carregando páginas...</p>
                 </div>
             `;
+        }
+
+        async function openChapter(chapterId, title) {
+            showPage('reader');
+            document.getElementById('reader-title').innerText = title;
+            const container = document.getElementById('reader-images');
+            container.innerHTML = '<div class="flex flex-col items-center gap-4 mt-20"><div class="loading-spinner"></div><p class="text-sm text-gray-500">Carregando páginas...</p></div>';
 
             try {
-                const serverUrl = `${MANGADEX_API}/at-home/server/${chapter.id}`;
-                let serverResp;
-                try {
-                    serverResp = await fetch(serverUrl);
-                    if (!serverResp.ok) throw new Error();
-                } catch {
-                    serverResp = await fetch(CORS_PROXY + serverUrl);
-                }
-                
-                const serverData = await serverResp.json();
-                const hash = serverData.chapter.hash;
-                const images = serverData.chapter.data; 
-                const baseUrl = serverData.baseUrl;
+                // Algumas instâncias da Consumet exigem /read/ outros /view/
+                const response = await fetch(`${CONSUMET_INSTANCES[currentInstanceIndex]}/read/${chapterId}`);
+                const pages = await response.json();
 
-                pagesContainer.innerHTML = '';
-                
-                images.forEach(imgName => {
-                    const img = document.createElement('img');
-                    img.className = 'reader-img opacity-0 transition-opacity duration-300';
-                    // As imagens do MangaDex At Home geralmente não precisam de proxy se o baseUrl for o servidor deles
-                    img.src = `${baseUrl}/data/${hash}/${imgName}`;
-                    img.loading = 'lazy';
-                    img.onerror = () => {
-                         // Fallback para Proxy em caso de erro na imagem individual
-                         img.src = CORS_PROXY + `${baseUrl}/data/${hash}/${imgName}`;
-                    };
-                    img.onload = () => img.classList.remove('opacity-0');
-                    pagesContainer.appendChild(img);
-                });
+                if (!pages || pages.length === 0) throw new Error('Nenhuma página retornada');
 
-                document.getElementById('prevCap').disabled = index >= currentChapters.length - 1;
-                document.getElementById('nextCap').disabled = index <= 0;
-                
-                document.getElementById('prevCap').onclick = () => openChapter(index + 1);
-                document.getElementById('nextCap').onclick = () => openChapter(index - 1);
-                
-                document.getElementById('readerSection').scrollTo(0,0);
+                container.innerHTML = pages.map(page => `
+                    <img src="${page.img}" 
+                         class="w-full max-w-3xl shadow-2xl bg-[#1a1a1c] mb-2" 
+                         loading="lazy"
+                         referrerpolicy="no-referrer"
+                         onerror="this.src='https://via.placeholder.com/800x1200?text=Erro+ao+Carregar+Página';">
+                `).join('');
 
             } catch (err) {
-                console.error(err);
-                pagesContainer.innerHTML = '<p class="text-red-500 p-10">Não foi possível carregar as imagens deste capítulo.</p>';
+                container.innerHTML = '<div class="text-center mt-20"><p class="text-red-500 mb-4">Não foi possível carregar as imagens deste capítulo.</p><button onclick="showPage(\'details\')" class="bg-white/10 px-6 py-2 rounded">Voltar</button></div>';
             }
         }
+
+        function showPage(pageId) {
+            document.getElementById('home-page').classList.add('hidden');
+            document.getElementById('details-page').classList.add('hidden');
+            document.getElementById('reader-page').classList.add('hidden');
+            document.getElementById(`${pageId}-page`).classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updatePaginationUI(hasNext) {
+            document.getElementById('page-indicator').innerText = `Página ${currentPage}`;
+            document.getElementById('prev-btn').disabled = currentPage === 1;
+            document.getElementById('next-btn').disabled = !hasNext;
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            loadContent();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            currentPage = 1;
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(l => l.classList.remove('active'));
+            const activeLink = document.getElementById(`nav-${filter}`);
+            if (activeLink) activeLink.classList.add('active');
+            
+            const titles = { 'trending': 'Tendências', 'popular': 'Mais Populares' };
+            document.getElementById('section-title').innerText = titles[filter] || 'Explorar';
+            
+            loadContent();
+        }
+
+        function resetAndLoad() {
+            currentPage = 1;
+            currentFilter = 'trending';
+            loadContent();
+        }
+
+        window.onload = loadContent;
     </script>
 </body>
 </html>
