@@ -3,27 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MangaCloud | Explore seu Mangá</title>
-    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2281/2281831.png">
-    <!-- Tailwind CSS Play CDN -->
+    <title>Manga Livre Explorer</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
+        // Configuração do Tailwind para evitar avisos de produção no console
+        window.tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#fef2f2',
-                            500: '#ef4444',
-                            600: '#dc2626',
-                            700: '#b91c1c',
-                        },
-                        dark: {
-                            900: '#0f172a',
-                            800: '#1e293b',
-                            700: '#334155'
-                        }
+                        brand: '#e11d48',
+                        dark: '#0f172a',
+                        card: '#1e293b'
                     }
                 }
             }
@@ -31,256 +24,343 @@
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease; }
-        .manga-card:hover img { transform: scale(1.05); }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #ef4444; border-radius: 10px; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .manga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.5rem; }
+        .reader-img { width: 100%; max-width: 800px; margin: 0 auto; display: block; }
+        .loading-shimmer { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-dark-900 text-gray-900 dark:text-gray-100 min-h-screen">
+<body class="min-h-screen">
 
     <!-- Header -->
-    <header class="sticky top-0 z-50 bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-700 shadow-sm">
-        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="location.reload()">
-                <div class="bg-brand-500 p-1.5 rounded-lg">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+    <header class="sticky top-0 z-50 bg-dark/90 backdrop-blur-md border-b border-slate-800 p-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="showHome()">
+                <div class="bg-brand p-1.5 rounded-lg">
+                    <i data-lucide="book-open" class="text-white w-6 h-6"></i>
                 </div>
-                <h1 class="text-xl font-bold tracking-tight hidden sm:block">Manga<span class="text-brand-500">Cloud</span></h1>
+                <h1 class="text-xl font-bold tracking-tight text-white hidden sm:block">MANGA<span class="text-brand">LIVRE</span></h1>
             </div>
-
-            <div class="flex-1 max-w-xl mx-4">
-                <div class="relative group">
+            
+            <div class="flex-1 max-w-md mx-4">
+                <div class="relative">
                     <input type="text" id="searchInput" placeholder="Buscar mangás..." 
-                        class="w-full bg-gray-100 dark:bg-dark-700 border-none rounded-full py-2 px-5 pl-10 focus:ring-2 focus:ring-brand-500 outline-none transition-all">
-                    <svg class="w-5 h-5 absolute left-3 top-2.5 text-gray-400 group-focus-within:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        class="w-full bg-slate-800 border-none rounded-full py-2 px-10 focus:ring-2 focus:ring-brand text-sm outline-none text-white">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
                 </div>
             </div>
 
-            <button id="themeToggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors">
-                <svg id="moonIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                <svg id="sunIcon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            </button>
+            <div class="flex items-center gap-4">
+                <button class="text-slate-400 hover:text-white transition"><i data-lucide="user" class="w-6 h-6"></i></button>
+            </div>
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-8">
-        <!-- Hero / Banner Section -->
-        <div id="heroSection" class="mb-10 rounded-2xl bg-gradient-to-r from-brand-600 to-red-400 p-8 text-white relative overflow-hidden shadow-lg">
-            <div class="relative z-10 max-w-lg">
-                <h2 class="text-3xl font-bold mb-2">Bem-vindo à Cloud!</h2>
-                <p class="text-white/80">Milhares de mangás, manhwas e manhuas para você ler online gratuitamente e sem anúncios chatos.</p>
-            </div>
-            <div class="absolute -right-10 -bottom-10 opacity-20 transform -rotate-12">
-                <svg class="w-64 h-64" fill="currentColor" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+    <main class="max-w-7xl mx-auto p-4 sm:p-6">
+        <!-- Listagem Principal -->
+        <div id="homeSection">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                <i data-lucide="trending-up" class="text-brand"></i> Populares agora
+            </h2>
+            <div id="mangaList" class="manga-grid">
+                <!-- Skeletons serão inseridos via JS para evitar erros de template -->
             </div>
         </div>
 
-        <!-- Section Title -->
-        <div class="flex items-center justify-between mb-6">
-            <h3 id="sectionTitle" class="text-2xl font-bold flex items-center gap-2">
-                <span class="w-2 h-8 bg-brand-500 rounded-full"></span>
-                Destaques Recentes
-            </h3>
+        <!-- Detalhes do Mangá -->
+        <div id="detailsSection" class="hidden">
+            <button onclick="showHome()" class="mb-6 flex items-center gap-2 text-slate-400 hover:text-brand transition">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i> Voltar
+            </button>
+            <div id="mangaDetailsContent"></div>
         </div>
 
-        <!-- Grid Container -->
-        <div id="mangaGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-            <!-- Shimmer Loading -->
-            <template id="loadingTemplate">
-                <div class="animate-pulse">
-                    <div class="bg-gray-300 dark:bg-dark-700 aspect-[3/4] rounded-xl mb-2"></div>
-                    <div class="h-4 bg-gray-300 dark:bg-dark-700 rounded w-3/4 mb-1"></div>
-                    <div class="h-3 bg-gray-200 dark:bg-dark-700 rounded w-1/2"></div>
+        <!-- Leitor -->
+        <div id="readerSection" class="hidden fixed inset-0 z-[60] bg-black overflow-y-auto no-scrollbar">
+            <div class="sticky top-0 bg-black/90 backdrop-blur-md p-4 flex items-center justify-between border-b border-white/10">
+                <div class="flex items-center gap-4">
+                    <button onclick="closeReader()" class="p-2 hover:bg-white/10 rounded-full text-white">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                    <h3 id="readerTitle" class="text-sm font-medium text-slate-300 truncate max-w-[150px] sm:max-w-md">Capítulo</h3>
                 </div>
-            </template>
+                <div class="flex gap-2">
+                    <button id="prevCap" class="px-3 py-1.5 bg-white/10 rounded text-sm disabled:opacity-30">Anterior</button>
+                    <button id="nextCap" class="px-3 py-1.5 bg-brand rounded text-sm disabled:opacity-30">Próximo</button>
+                </div>
+            </div>
+            <div id="pagesContainer" class="flex flex-col items-center py-4 space-y-2">
+                <!-- Imagens aqui -->
+            </div>
         </div>
     </main>
 
-    <!-- Modal Visualizador / Detalhes -->
-    <div id="readerModal" class="fixed inset-0 z-[60] hidden bg-black flex flex-col">
-        <div class="bg-dark-800/90 backdrop-blur text-white p-4 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <button onclick="closeReader()" class="p-2 hover:bg-white/10 rounded-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                </button>
-                <h4 id="readerTitle" class="font-bold truncate max-w-[200px] md:max-w-md text-sm md:text-base">Título do Mangá</h4>
-            </div>
-            <div class="flex items-center gap-2">
-                <select id="chapterSelect" class="bg-dark-700 text-sm border-none rounded px-3 py-1 outline-none focus:ring-1 focus:ring-brand-500"></select>
-            </div>
-        </div>
-        <div id="readerContent" class="flex-1 overflow-y-auto custom-scroll bg-black">
-            <!-- Imagens do capítulo entram aqui -->
-            <div id="pageLoader" class="flex flex-col items-center justify-center h-full py-20 text-white">
-                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500 mb-4"></div>
-                <p>Carregando páginas...</p>
-            </div>
-            <div id="imagesContainer" class="flex flex-col items-center"></div>
-        </div>
-    </div>
-
     <script>
-        const API_BASE = "https://consumet-api-f61i.onrender.com/manga/mangadex";
-        const PROXY = "https://api.allorigins.win/raw?url=";
-        const mangaGrid = document.getElementById('mangaGrid');
-        const searchInput = document.getElementById('searchInput');
-        const loadingTemplate = document.getElementById('loadingTemplate');
+        const JIKAN_API = 'https://api.jikan.moe/v4';
+        const MANGADEX_API = 'https://api.mangadex.org';
         
-        // Gerenciamento de Tema
-        const themeToggle = document.getElementById('themeToggle');
-        const moonIcon = document.getElementById('moonIcon');
-        const sunIcon = document.getElementById('sunIcon');
-        
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            moonIcon.classList.add('hidden');
-            sunIcon.classList.remove('hidden');
-        }
+        let currentChapters = [];
+        let currentChapterIndex = -1;
 
-        themeToggle.addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            const isDark = document.documentElement.classList.contains('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            moonIcon.classList.toggle('hidden');
-            sunIcon.classList.toggle('hidden');
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            fetchTrending();
+            
+            const searchInput = document.getElementById('searchInput');
+            searchInput.onkeypress = (e) => {
+                if (e.key === 'Enter') searchManga(e.target.value);
+            };
         });
 
-        // Funções da API
-        async function fetchMangas(query = '') {
-            mangaGrid.innerHTML = '';
+        function showHome() {
+            document.getElementById('homeSection').classList.remove('hidden');
+            document.getElementById('detailsSection').classList.add('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function showDetails() {
+            document.getElementById('homeSection').classList.add('hidden');
+            document.getElementById('detailsSection').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function closeReader() {
+            document.getElementById('readerSection').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            document.getElementById('pagesContainer').innerHTML = '';
+        }
+
+        function createSkeletons() {
+            const container = document.getElementById('mangaList');
+            container.innerHTML = '';
             for(let i=0; i<12; i++) {
-                mangaGrid.appendChild(loadingTemplate.content.cloneNode(true));
-            }
-
-            try {
-                // Se não houver query, vamos buscar populares/aleatórios simulados pelo Dex
-                const url = query 
-                    ? `${API_BASE}/${encodeURIComponent(query)}`
-                    : `${API_BASE}/berserk`; // Exemplo inicial
-
-                // Usamos o proxy para evitar CORS se necessário, mas Consumet costuma rodar em node e ter CORS aberto
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                renderMangaGrid(data.results || []);
-            } catch (error) {
-                console.error("Erro na busca:", error);
-                mangaGrid.innerHTML = `<div class="col-span-full text-center py-20 text-red-500">Ocorreu um erro ao carregar os dados. Tente novamente mais tarde.</div>`;
+                const skel = document.createElement('div');
+                skel.className = 'space-y-3';
+                skel.innerHTML = `
+                    <div class="aspect-[3/4] rounded-xl loading-shimmer"></div>
+                    <div class="h-4 w-3/4 rounded loading-shimmer"></div>
+                `;
+                container.appendChild(skel);
             }
         }
 
-        function renderMangaGrid(mangas) {
-            mangaGrid.innerHTML = '';
-            if (mangas.length === 0) {
-                mangaGrid.innerHTML = `<div class="col-span-full text-center py-20 opacity-50">Nenhum resultado encontrado.</div>`;
+        async function fetchTrending() {
+            createSkeletons();
+            try {
+                const response = await fetch(`${JIKAN_API}/top/manga?filter=bypopularity&limit=20`);
+                const data = await response.json();
+                renderMangaList(data.data);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('mangaList').innerHTML = `<p class="text-red-500">Erro ao carregar mangás.</p>`;
+            }
+        }
+
+        async function searchManga(query) {
+            if (!query) return fetchTrending();
+            const container = document.getElementById('mangaList');
+            container.innerHTML = '<p class="col-span-full text-center py-10">Buscando...</p>';
+            
+            try {
+                const response = await fetch(`${JIKAN_API}/manga?q=${encodeURIComponent(query)}&order_by=popularity&sort=asc`);
+                const data = await response.json();
+                renderMangaList(data.data);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderMangaList(mangas) {
+            const container = document.getElementById('mangaList');
+            container.innerHTML = '';
+
+            if (!mangas || mangas.length === 0) {
+                container.innerHTML = '<p class="col-span-full text-center py-10 text-slate-500">Nenhum resultado encontrado.</p>';
                 return;
             }
 
             mangas.forEach(manga => {
                 const card = document.createElement('div');
-                card.className = "manga-card group cursor-pointer relative";
+                card.className = 'group cursor-pointer transition-all hover:-translate-y-1';
+                card.onclick = () => loadMangaDetails(manga.mal_id);
+                
                 card.innerHTML = `
-                    <div class="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-200 dark:bg-dark-800 shadow-md">
-                        <img src="${manga.image}" alt="${manga.title}" class="w-full h-full object-cover transition-transform duration-500" loading="lazy" onerror="this.src='https://via.placeholder.com/300x400?text=No+Cover'">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                            <span class="text-white text-xs font-bold bg-brand-500 self-start px-2 py-1 rounded mb-2">LER AGORA</span>
+                    <div class="relative aspect-[3/4] rounded-xl overflow-hidden shadow-lg border border-slate-800">
+                        <img src="${manga.images.webp.large_image_url}" alt="${manga.title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
+                        <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
+                            <span class="text-[10px] uppercase font-bold text-brand bg-brand/10 px-2 py-0.5 rounded">${manga.type || 'Manga'}</span>
                         </div>
                     </div>
-                    <h4 class="mt-3 font-semibold text-sm line-clamp-2 group-hover:text-brand-500 transition-colors">${manga.title}</h4>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">MangaDex</p>
+                    <h3 class="mt-3 text-sm font-semibold line-clamp-2 group-hover:text-brand transition">${manga.title}</h3>
+                    <p class="text-xs text-slate-500 mt-1">${manga.score ? '⭐ ' + manga.score : 'N/A'}</p>
                 `;
-                card.onclick = () => openMangaDetails(manga.id, manga.title);
-                mangaGrid.appendChild(card);
+                container.appendChild(card);
             });
+            lucide.createIcons();
         }
 
-        async function openMangaDetails(id, title) {
-            document.getElementById('readerModal').classList.remove('hidden');
-            document.getElementById('readerTitle').innerText = title;
-            document.getElementById('imagesContainer').innerHTML = '';
-            document.getElementById('pageLoader').classList.remove('hidden');
+        async function loadMangaDetails(malId) {
+            showDetails();
+            const content = document.getElementById('mangaDetailsContent');
+            content.innerHTML = '<div class="h-96 loading-shimmer rounded-2xl w-full"></div>';
+
+            try {
+                const response = await fetch(`${JIKAN_API}/manga/${malId}/full`);
+                const { data } = await response.json();
+                
+                content.innerHTML = `
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <div class="w-full md:w-72 shrink-0">
+                            <img src="${data.images.webp.large_image_url}" class="w-full rounded-2xl shadow-2xl border border-slate-800">
+                            <div class="mt-6 space-y-2 p-4 bg-slate-900/50 rounded-xl">
+                                <div class="flex justify-between text-sm"><span class="text-slate-500">Status</span> <span class="text-white">${data.status}</span></div>
+                                <div class="flex justify-between text-sm"><span class="text-slate-500">Capítulos</span> <span class="text-white">${data.chapters || '??'}</span></div>
+                                <div class="flex justify-between text-sm"><span class="text-slate-500">Nota</span> <span class="text-brand font-bold">${data.score || 'N/A'}</span></div>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-3xl font-bold mb-2">${data.title}</h2>
+                            <p class="text-slate-400 mb-6 italic">${data.title_english || ''}</p>
+                            
+                            <div class="flex flex-wrap gap-2 mb-8">
+                                ${data.genres.map(g => `<span class="bg-slate-800 text-xs px-3 py-1 rounded-full border border-slate-700">${g.name}</span>`).join('')}
+                            </div>
+
+                            <div class="mb-8">
+                                <h4 class="text-lg font-bold mb-2 border-b border-slate-800 pb-2">Sinopse</h4>
+                                <p class="text-slate-300 leading-relaxed text-sm">${data.synopsis || 'Sem descrição.'}</p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-lg font-bold mb-4 border-b border-slate-800 pb-2 flex justify-between items-center">
+                                    Capítulos PT-BR
+                                    <span class="text-[10px] text-slate-500 uppercase">MangaDex</span>
+                                </h4>
+                                <div id="chapterList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div class="col-span-full py-10 flex flex-col items-center">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mb-2"></div>
+                                        <p class="text-slate-500 text-sm italic">Buscando capítulos em português...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                fetchMangaDexChapters(data.title);
+            } catch (err) {
+                console.error(err);
+                content.innerHTML = `<p class="text-red-500">Erro ao carregar detalhes.</p>`;
+            }
+        }
+
+        async function fetchMangaDexChapters(title) {
+            const listContainer = document.getElementById('chapterList');
             
             try {
-                // Busca detalhes e capítulos
-                const response = await fetch(`${API_BASE}/info?id=${id}`);
-                const data = await response.json();
+                // Busca ID
+                const searchResp = await fetch(`${MANGADEX_API}/manga?title=${encodeURIComponent(title)}&limit=1`);
+                const searchData = await searchResp.json();
                 
-                const select = document.getElementById('chapterSelect');
-                select.innerHTML = '';
-                
-                if (data.chapters && data.chapters.length > 0) {
-                    data.chapters.reverse().forEach(ch => {
-                        const opt = document.createElement('option');
-                        opt.value = ch.id;
-                        opt.textContent = `Capítulo ${ch.chapterNumber || ch.title}`;
-                        select.appendChild(opt);
-                    });
-                    
-                    loadChapter(data.chapters[0].id);
-                    
-                    select.onchange = (e) => loadChapter(e.target.value);
-                } else {
-                    alert("Nenhum capítulo disponível.");
-                    closeReader();
+                if (!searchData.data || searchData.data.length === 0) {
+                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4">Nenhum capítulo disponível no MangaDex.</p>';
+                    return;
                 }
-            } catch (e) {
-                console.error(e);
-                alert("Erro ao carregar capítulos.");
-                closeReader();
+
+                const mdId = searchData.data[0].id;
+
+                // Busca capítulos PT-BR
+                const chapResp = await fetch(`${MANGADEX_API}/manga/${mdId}/feed?translatedLanguage[]=pt-br&limit=500&order[chapter]=desc`);
+                const chapData = await chapResp.json();
+
+                if (!chapData.data || chapData.data.length === 0) {
+                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4">Sem capítulos em português disponíveis aqui.</p>';
+                    return;
+                }
+
+                currentChapters = chapData.data;
+                listContainer.innerHTML = '';
+                
+                currentChapters.forEach((chap, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'flex items-center justify-between p-3 bg-slate-800/50 hover:bg-brand/20 border border-slate-700 rounded-lg text-left transition group';
+                    btn.onclick = () => openChapter(index);
+                    
+                    const num = chap.attributes.chapter || '?';
+                    const cTitle = chap.attributes.title || `Capítulo ${num}`;
+                    
+                    btn.innerHTML = `
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-xs text-brand font-bold uppercase">Cap. ${num}</span>
+                            <span class="text-sm text-slate-200 truncate pr-4">${cTitle}</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-brand shrink-0"></i>
+                    `;
+                    listContainer.appendChild(btn);
+                });
+                lucide.createIcons();
+
+            } catch (err) {
+                console.error(err);
+                listContainer.innerHTML = '<p class="text-red-500 text-sm py-4">Erro ao buscar capítulos.</p>';
             }
         }
 
-        async function loadChapter(chapterId) {
-            const container = document.getElementById('imagesContainer');
-            const loader = document.getElementById('pageLoader');
-            container.innerHTML = '';
-            loader.classList.remove('hidden');
-            document.getElementById('readerContent').scrollTop = 0;
+        async function openChapter(index) {
+            currentChapterIndex = index;
+            const chapter = currentChapters[index];
+            
+            document.getElementById('readerSection').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            document.getElementById('readerTitle').innerText = `Cap. ${chapter.attributes.chapter} - ${chapter.attributes.title || ''}`;
+            
+            const pagesContainer = document.getElementById('pagesContainer');
+            pagesContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-screen text-slate-500">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mb-4"></div>
+                    <p>Carregando páginas...</p>
+                </div>
+            `;
 
             try {
-                const response = await fetch(`${API_BASE}/read?chapterId=${chapterId}`);
-                const pages = await response.json();
+                const serverResp = await fetch(`${MANGADEX_API}/at-home/server/${chapter.id}`);
+                const serverData = await serverResp.json();
                 
-                loader.classList.add('hidden');
-                pages.forEach(page => {
+                const hash = serverData.chapter.hash;
+                const images = serverData.chapter.data; 
+                const baseUrl = serverData.baseUrl;
+
+                pagesContainer.innerHTML = '';
+                
+                images.forEach(imgName => {
                     const img = document.createElement('img');
-                    // Usamos proxy opcional para as imagens do MangaDex se necessário
-                    img.src = page.img; 
-                    img.className = "max-w-full md:max-w-3xl lg:max-w-4xl h-auto mb-1 select-none pointer-events-none";
-                    img.loading = "lazy";
-                    img.onerror = () => { img.style.display = 'none'; };
-                    container.appendChild(img);
+                    img.className = 'reader-img opacity-0 transition-opacity duration-300';
+                    img.src = `${baseUrl}/data/${hash}/${imgName}`;
+                    img.loading = 'lazy';
+                    img.onload = () => img.classList.remove('opacity-0');
+                    pagesContainer.appendChild(img);
                 });
-            } catch (e) {
-                loader.innerHTML = `<p class="text-red-500">Erro ao carregar imagens do capítulo.</p>`;
+
+                document.getElementById('prevCap').disabled = index >= currentChapters.length - 1;
+                document.getElementById('nextCap').disabled = index <= 0;
+                
+                document.getElementById('prevCap').onclick = () => openChapter(index + 1);
+                document.getElementById('nextCap').onclick = () => openChapter(index - 1);
+                
+                document.getElementById('readerSection').scrollTo(0,0);
+
+            } catch (err) {
+                console.error(err);
+                pagesContainer.innerHTML = '<p class="text-red-500 p-10">Erro ao carregar imagens.</p>';
             }
         }
 
-        function closeReader() {
-            document.getElementById('readerModal').classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        }
-
-        // Debounce para busca
-        let searchTimer;
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchTimer);
-            const query = e.target.value.trim();
-            if (query.length < 3) return;
-            
-            searchTimer = setTimeout(() => {
-                document.getElementById('sectionTitle').innerHTML = `Resultados para: <span class="text-brand-500">"${query}"</span>`;
-                document.getElementById('heroSection').classList.add('hidden');
-                fetchMangas(query);
-            }, 600);
-        });
-
-        // Inicialização
-        window.onload = () => {
-            fetchMangas(); // Carrega iniciais
-        };
     </script>
 </body>
 </html>
