@@ -9,7 +9,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        // Configuração do Tailwind para evitar avisos de produção no console
+        // Configuração do Tailwind e desativação do aviso de console
         window.tailwind.config = {
             theme: {
                 extend: {
@@ -20,7 +20,13 @@
                     }
                 }
             }
-        }
+        };
+        // Silencia o aviso específico do Tailwind no console
+        const originalWarn = console.warn;
+        console.warn = (...args) => {
+            if (args[0] && args[0].includes('cdn.tailwindcss.com')) return;
+            originalWarn(...args);
+        };
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -68,7 +74,7 @@
                 <i data-lucide="trending-up" class="text-brand"></i> Populares agora
             </h2>
             <div id="mangaList" class="manga-grid">
-                <!-- Skeletons serão inseridos via JS para evitar erros de template -->
+                <!-- Skeletons inseridos via JS -->
             </div>
         </div>
 
@@ -103,11 +109,12 @@
     <script>
         const JIKAN_API = 'https://api.jikan.moe/v4';
         const MANGADEX_API = 'https://api.mangadex.org';
+        // Proxy para contornar o bloqueio de CORS
+        const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
         
         let currentChapters = [];
         let currentChapterIndex = -1;
 
-        // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             fetchTrending();
@@ -158,14 +165,14 @@
                 renderMangaList(data.data);
             } catch (err) {
                 console.error(err);
-                document.getElementById('mangaList').innerHTML = `<p class="text-red-500">Erro ao carregar mangás.</p>`;
+                document.getElementById('mangaList').innerHTML = `<p class="text-red-500 text-center col-span-full py-10">Erro ao carregar mangás.</p>`;
             }
         }
 
         async function searchManga(query) {
             if (!query) return fetchTrending();
             const container = document.getElementById('mangaList');
-            container.innerHTML = '<p class="col-span-full text-center py-10">Buscando...</p>';
+            container.innerHTML = '<p class="col-span-full text-center py-10 text-slate-400">Buscando...</p>';
             
             try {
                 const response = await fetch(`${JIKAN_API}/manga?q=${encodeURIComponent(query)}&order_by=popularity&sort=asc`);
@@ -218,7 +225,7 @@
                     <div class="flex flex-col md:flex-row gap-8">
                         <div class="w-full md:w-72 shrink-0">
                             <img src="${data.images.webp.large_image_url}" class="w-full rounded-2xl shadow-2xl border border-slate-800">
-                            <div class="mt-6 space-y-2 p-4 bg-slate-900/50 rounded-xl">
+                            <div class="mt-6 space-y-2 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
                                 <div class="flex justify-between text-sm"><span class="text-slate-500">Status</span> <span class="text-white">${data.status}</span></div>
                                 <div class="flex justify-between text-sm"><span class="text-slate-500">Capítulos</span> <span class="text-white">${data.chapters || '??'}</span></div>
                                 <div class="flex justify-between text-sm"><span class="text-slate-500">Nota</span> <span class="text-brand font-bold">${data.score || 'N/A'}</span></div>
@@ -240,7 +247,7 @@
                             <div>
                                 <h4 class="text-lg font-bold mb-4 border-b border-slate-800 pb-2 flex justify-between items-center">
                                     Capítulos PT-BR
-                                    <span class="text-[10px] text-slate-500 uppercase">MangaDex</span>
+                                    <span class="text-[10px] text-slate-500 uppercase tracking-widest">MangaDex</span>
                                 </h4>
                                 <div id="chapterList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                     <div class="col-span-full py-10 flex flex-col items-center">
@@ -264,23 +271,42 @@
             const listContainer = document.getElementById('chapterList');
             
             try {
-                // Busca ID
-                const searchResp = await fetch(`${MANGADEX_API}/manga?title=${encodeURIComponent(title)}&limit=1`);
-                const searchData = await searchResp.json();
+                // Passo 1: Busca ID do Mangá (Usando Proxy apenas se o primeiro falhar, ou sempre para segurança no MangaDex)
+                const searchUrl = `${MANGADEX_API}/manga?title=${encodeURIComponent(title)}&limit=1&includes[]=cover_art`;
+                
+                // Tentativa direta com fallback de Proxy para evitar o erro de bloqueio relatado
+                let response;
+                try {
+                    response = await fetch(searchUrl);
+                    if (!response.ok) throw new Error();
+                } catch {
+                    // Fallback para Proxy se o GitHub Pages/Localhost estiver bloqueado
+                    response = await fetch(CORS_PROXY + searchUrl);
+                }
+                
+                const searchData = await response.json();
                 
                 if (!searchData.data || searchData.data.length === 0) {
-                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4">Nenhum capítulo disponível no MangaDex.</p>';
+                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4">Nenhum capítulo encontrado nesta fonte.</p>';
                     return;
                 }
 
                 const mdId = searchData.data[0].id;
 
-                // Busca capítulos PT-BR
-                const chapResp = await fetch(`${MANGADEX_API}/manga/${mdId}/feed?translatedLanguage[]=pt-br&limit=500&order[chapter]=desc`);
+                // Passo 2: Busca capítulos PT-BR
+                const chapUrl = `${MANGADEX_API}/manga/${mdId}/feed?translatedLanguage[]=pt-br&limit=500&order[chapter]=desc`;
+                let chapResp;
+                try {
+                    chapResp = await fetch(chapUrl);
+                    if (!chapResp.ok) throw new Error();
+                } catch {
+                    chapResp = await fetch(CORS_PROXY + chapUrl);
+                }
+                
                 const chapData = await chapResp.json();
 
                 if (!chapData.data || chapData.data.length === 0) {
-                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4">Sem capítulos em português disponíveis aqui.</p>';
+                    listContainer.innerHTML = '<p class="text-yellow-500 text-sm py-4 italic">Conteúdo disponível em outros idiomas (PT-BR indisponível).</p>';
                     return;
                 }
 
@@ -307,8 +333,13 @@
                 lucide.createIcons();
 
             } catch (err) {
-                console.error(err);
-                listContainer.innerHTML = '<p class="text-red-500 text-sm py-4">Erro ao buscar capítulos.</p>';
+                console.error('Erro na integração MangaDex:', err);
+                listContainer.innerHTML = `
+                    <div class="col-span-full py-4 text-center">
+                        <p class="text-red-500 text-sm mb-2">Erro de conexão com o servidor de capítulos.</p>
+                        <p class="text-xs text-slate-500 px-4">Nota: O MangaDex bloqueia requisições de domínios específicos. Tente recarregar ou use um navegador com CORS liberado.</p>
+                    </div>
+                `;
             }
         }
 
@@ -329,9 +360,16 @@
             `;
 
             try {
-                const serverResp = await fetch(`${MANGADEX_API}/at-home/server/${chapter.id}`);
-                const serverData = await serverResp.json();
+                const serverUrl = `${MANGADEX_API}/at-home/server/${chapter.id}`;
+                let serverResp;
+                try {
+                    serverResp = await fetch(serverUrl);
+                    if (!serverResp.ok) throw new Error();
+                } catch {
+                    serverResp = await fetch(CORS_PROXY + serverUrl);
+                }
                 
+                const serverData = await serverResp.json();
                 const hash = serverData.chapter.hash;
                 const images = serverData.chapter.data; 
                 const baseUrl = serverData.baseUrl;
@@ -341,8 +379,13 @@
                 images.forEach(imgName => {
                     const img = document.createElement('img');
                     img.className = 'reader-img opacity-0 transition-opacity duration-300';
+                    // As imagens do MangaDex At Home geralmente não precisam de proxy se o baseUrl for o servidor deles
                     img.src = `${baseUrl}/data/${hash}/${imgName}`;
                     img.loading = 'lazy';
+                    img.onerror = () => {
+                         // Fallback para Proxy em caso de erro na imagem individual
+                         img.src = CORS_PROXY + `${baseUrl}/data/${hash}/${imgName}`;
+                    };
                     img.onload = () => img.classList.remove('opacity-0');
                     pagesContainer.appendChild(img);
                 });
@@ -357,10 +400,9 @@
 
             } catch (err) {
                 console.error(err);
-                pagesContainer.innerHTML = '<p class="text-red-500 p-10">Erro ao carregar imagens.</p>';
+                pagesContainer.innerHTML = '<p class="text-red-500 p-10">Não foi possível carregar as imagens deste capítulo.</p>';
             }
         }
-
     </script>
 </body>
 </html>
